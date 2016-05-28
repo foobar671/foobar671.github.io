@@ -9,9 +9,14 @@
 	var colorStep = 255 / (gridSize/2);
 	var colorOffsetHead = 0;
 	var useSquares = true;
-	
+	var letterAlpha = 0.0;
+	var letterFadeInAlphaStep = 0.003;
+	var embellishAlpha = 0.0;
+	var embellishAlphaStep = 0.02;
+	var embellishAlphaShouldIncrease = true;
 	var squareArr = new Array(gridSize);
 	var letterArr = new Array(gridSize);
+	var embellishArr = new Array(gridSize);
 	
 	function main()
 	{
@@ -21,10 +26,13 @@
 		{
 			squareArr[i] = new Array(gridSize);
 			letterArr[i] = new Array(gridSize);
+			embellishArr[i] = new Array(gridSize);
+			
 			for (var j = 0; j < gridSize; j++)
 			{
 				squareArr[i][j] = new Array(3);
 				letterArr[i][j] = false;
+				embellishArr[i][j] = false;
 				
 				squareArr[i][j][0] = 0;
 				squareArr[i][j][1] = 0;
@@ -375,6 +383,53 @@
 		letterArr[26][44] = true;
 		letterArr[27][44] = true;
 		
+		// embellish
+		embellishArr[27][1] = true;
+		embellishArr[27][2] = true;
+		embellishArr[27][3] = true;
+		embellishArr[27][4] = true;
+		
+		embellishArr[28][5] = true;
+		embellishArr[29][6] = true;
+		embellishArr[29][7] = true;
+		embellishArr[28][8] = true;
+		
+		embellishArr[27][9] = true;
+		embellishArr[27][10] = true;
+		embellishArr[27][11] = true;
+		embellishArr[27][12] = true;
+		
+		
+		
+		embellishArr[27][46] = true;
+		embellishArr[27][47] = true;
+		embellishArr[27][48] = true;
+		embellishArr[27][49] = true;
+		
+		embellishArr[26][50] = true;
+		embellishArr[25][51] = true;
+		embellishArr[25][52] = true;
+		embellishArr[26][53] = true;
+		
+		embellishArr[27][54] = true;
+		embellishArr[27][55] = true;
+		embellishArr[27][56] = true;
+		embellishArr[27][57] = true;
+		
+		embellishArr[23][59] = true;
+		embellishArr[26][59] = true;
+		embellishArr[24][59] = true;
+		embellishArr[25][59] = true;
+		embellishArr[25][59] = true;
+		embellishArr[26][59] = true;
+		embellishArr[27][59] = true;
+		embellishArr[28][59] = true;
+		embellishArr[29][59] = true;
+		embellishArr[30][59] = true;
+		embellishArr[31][59] = true;
+		embellishArr[32][59] = true;
+		
+		embellishArr[34][59] = true;
 		
 		
 		var snd = document.getElementById('noise');
@@ -435,26 +490,50 @@
 			  }
 			  else
 			  {
-				//ctx.fillStyle = 'rgb(' + 0 + ',' + 0 + ',' + 0 + ')';
+				ctx.save();
+				ctx.globalAlpha = letterAlpha
 				ctx.fillRect(j*squareWidth,i*squareHeight,squareWidth,squareHeight);
+				ctx.restore();
+			  }
+			  
+			  if (embellishArr[i][j] == true && letterAlpha >= 1.0)
+			  {
+				ctx.save();
+				ctx.globalAlpha = embellishAlpha;
+				ctx.fillRect(j*squareWidth,i*squareHeight,squareWidth,squareHeight);
+				ctx.restore();
 			  }
 			}
-			
-			ctx.save();
-			
-			ctx.shadowOffsetX = 2;
-		    ctx.shadowOffsetY = 2;
-		    ctx.shadowBlur = 2;
-		    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-		 
-		    ctx.font = "italic" + " " + textSize + "px " + textFont;
-		    ctx.fillStyle = "Black";
-		   // ctx.fillText("BIRTHDAY", textX, textY);
-			
-			ctx.restore();
 		  }
 	   }
 	   
+	   if (letterAlpha < 1.0)
+	   {
+			letterAlpha += letterFadeInAlphaStep;
+	   }
+	   
+	   if (letterAlpha >= 1.0)
+	   {
+			if (embellishAlphaShouldIncrease)
+			{
+				embellishAlpha += embellishAlphaStep;
+				if (embellishAlpha >= 1.0)
+				{
+					embellishAlpha = 1.0;
+					embellishAlphaShouldIncrease = false;
+				}
+			}
+			else
+			{
+				embellishAlpha -= embellishAlphaStep;
+				if (embellishAlpha <= 0.0)
+				{
+					embellishAlpha = 0.0;
+					embellishAlphaShouldIncrease = true;
+				}
+			}
+		}
+		
 	   colorOffsetHead++;
 	   colorOffsetHead = colorOffsetHead % (gridSize*gridSize);
 	   setTimeout(draw, updateTimeMS);
@@ -494,8 +573,8 @@
 		}
 	
 	  letterArr[squareRow][squareCol] = !letterArr[squareRow][squareCol];
-	  document.getElementById("debug").innerHTML = "Square Clicked (row, col) = ("
-	  + squareRow + ", " + squareCol + ")";
+	//  document.getElementById("debug").innerHTML = "Square Clicked (row, col) = ("
+	//  + squareRow + ", " + squareCol + ")";
 	}
   </script>
  <title>JOGO 1</title>
