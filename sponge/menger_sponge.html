@@ -10,6 +10,7 @@
 	</head>
 	<body>
 		<script src="three.js"></script>
+		<script src='http://threejs.org/examples/js/controls/OrbitControls.js'></script>
 		<script>
 			// Globals
 			var scene;
@@ -17,18 +18,21 @@
 			var renderer;
 			
 			var fieldOfView = 75.0;
+			var autoRotateStep = 0.25; //
 			
-			var originalCubeSizeX = 8.0;
-			var originalCubeSizeY = 8.0;
-			var originalCubeSizeZ = 8.0;
+			var originalCubeSizeX = 8.0; // 8.0
+			var originalCubeSizeY = 8.0; // 8.0
+			var originalCubeSizeZ = 8.0; // 8.0
 			
-			var cubeDepth = 3; // This gets slow FAST! Three seems like the max
+			var cubeDepth = 3; // 3
 			
 			function init()
 			{
 				scene = new THREE.Scene();	
 				camera = new THREE.PerspectiveCamera(
 					fieldOfView, window.innerWidth / window.innerHeight, 0.1, 1000 );
+			    var controls = new THREE.OrbitControls(camera)
+
 				renderer = new THREE.WebGLRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
@@ -91,9 +95,10 @@
 							{
 								var subCubeGeom = new THREE.BoxGeometry(
 									subCubeSideLenX, subCubeSideLenY, subCubeSideLenZ );
-								var subCubeMaterial = new THREE.MeshBasicMaterial(
-									{ color: (0xffffff*colorScale) } );
-									//{ color: (0xffffff) } );
+								var subCubeMaterial = 
+									new THREE.MeshPhongMaterial({color: 0xFFFFFF});
+								//new THREE.MeshBasicMaterial(
+									//{ color: (0xffffff*colorScale) } );
 								var subCube = new THREE.Mesh(subCubeGeom, subCubeMaterial);
 								
 								subCube.position.x = currCenter.x;
@@ -120,6 +125,7 @@
 			{
 				var initialCubes = computeSponge(initialCube);
 				return recursiveSpongeCompute(depth, initialCubes);
+				//return iterativeSpongeCompute(depth, initialCubes);
 			}
 			
 			function recursiveSpongeCompute(depth, cubeList)
@@ -140,6 +146,27 @@
 				return finalCubeList;
 			}
 			
+			function iterativeSpongeCompute(depth, cubeList)
+			{	
+
+				var finalCubeList = cubeList.slice();
+				var currList = finalCubeList.slice();
+				for (i = 0; i < depth; i++)
+				{
+					for (j = 0; j < currList.length; j++)
+					{
+						var newCubes = computeSponge(currList[j]);
+						for (k = 0; k < newCubes.length; k++)
+						{
+							finalCubeList.push(newCubes[k]);
+						}
+					}
+					currList = finalCubeList.slice()
+				}
+				
+				return finalCubeList;
+			}
+			
 			function addSphereCenteredAtPoint(point)
 			{
 				var sphereGeom = new THREE.SphereGeometry(0.5);
@@ -151,24 +178,33 @@
 				scene.add(sphere);
 			}
 			
+			// Cubes are meshes made from BoxGeometries
 			function addCubesToScene(cubes)
 			{
 				console.log("Adding " + cubes.length + " cubes to scene.");
+				spongeGeometry = new THREE.Geometry();
 				for (i = 0; i < cubes.length; i++)
 				{
-					scene.add(cubes[i]);
+					cubes[i].updateMatrix();
+					spongeGeometry.merge(cubes[i].geometry, cubes[i].matrix);
 				}
+				var material = new THREE.MeshPhongMaterial({color: 0xFFFFFF});
+				var mesh = new THREE.Mesh(spongeGeometry, material);
+				scene.add(mesh);
 			}
 			
 			var t = 0;
 			function render()
 			{
+				renderer.setSize(window.innerWidth, window.innerHeight);
+				camera.aspect = (window.innerWidth / window.innerHeight);
+				camera.updateProjectionMatrix();
 				requestAnimationFrame( render );
 				
 				camera.position.x = (Math.sin( t/30) * 12 );
 				camera.position.z = (Math.cos( t/30) * 12);
 				camera.lookAt(new THREE.Vector3(0,0,0));
-				t += 0.75;
+				t += autoRotateStep;
 
 				renderer.render( scene, camera );
 			}
@@ -182,9 +218,11 @@
 			
 			var subCubes = computeSpongeAtDepth(originalCube, cubeDepth);
 			addCubesToScene(subCubes);
-			
-			//camera.position.y = 6.5
-			
+
+			var light = new THREE.HemisphereLight(0xfffff0, 0x101020, 1.25);
+			light.position.set(0.75, 1, 0.25);
+			scene.add(light);
+
 			render();
 		</script>
 	</body>
