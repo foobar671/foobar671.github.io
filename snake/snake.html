@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8"/>
+  <script type="application/javascript">
+  
+	// Gamegrid variables. Note that we map increasing Y to higher row number.
+	var numGridRows = 30;
+	var numGridCols = numGridRows;	
+	var gameGrid = new Array();
+	var totalGridWidthInPixels = 600.0;
+	var totalGridHeightInPixels = 600.0;
+	
+	// Snake properties
+	var initialSnakeHeadPositionX = Math.floor(numGridCols/2);
+    var initialSnakeHeadPositionY = Math.floor(numGridRows/2);
+	var initialSnakeBodySegments = 3;
+	var currSnakeHeadPosX = initialSnakeHeadPositionX;
+	var currSnakeHeadPosY = initialSnakeHeadPositionY;
+	var currSnakeBodySegments = initialSnakeBodySegments;
+	var snakeBodySegmentsXCoords = new Array();
+	var snakeBodySegmentsYCoords = new Array();
+	var snakeHeadColor = "#FF0000";
+	var snakeBodyColor = "#008000";
+	
+	// Apple properties
+	var appleXPositions = new Array();
+	var appleYPositions = new Array();
+	
+	// Game grid contents IDs
+	var empty = 0;
+	var snakeBody = 1;
+	var snakeHead = 2;
+	var apple = 3;
+	
+	// Random variables that don't belong anywhere else
+	var debug = true;
+	var gridColor = "#000000";
+	var borderColor = "#000000";
+	var updateTimeMS = 16;
+	
+	function initializeGameGrid()
+	{
+		for (i = 0; i < numGridRows; i++)
+		{
+		    gameGrid[i] = new Array();
+			for (j = 0; j < numGridCols; j++)
+			{
+				gameGrid[i][j] = 0;
+			}
+		}
+	}
+	
+	function initializeSnake()
+	{
+		// Should add some bounds checking
+		gameGrid[initialSnakeHeadPositionX][initialSnakeHeadPositionY] = snakeHead;
+		for (i = 0; i < initialSnakeBodySegments; i++)
+		{
+			// [row][col]
+			gameGrid[initialSnakeHeadPositionY + i + 1][initialSnakeHeadPositionX] = snakeBody;
+		}
+	}
+	
+	function initializeGame()
+	{
+		initializeGameGrid();
+		initializeSnake();
+	}
+
+	function drawGrid(drawData)
+	{
+		drawData.ctx.fillStyle = gridColor;
+		var currOffsetX = 0;
+		var currOffsetY = 0;
+		
+		for (row = 0; row < numGridRows; row++)
+		{
+			for (col = 0; col < numGridCols; col++)
+			{
+				drawData.ctx.rect(
+					drawData.gridZeroXCoord + currOffsetX,
+					drawData.gridZeroYCoord + currOffsetY,
+					drawData.pixelsPerGridCellSide,
+					drawData.pixelsPerGridCellSide);		
+				drawData.ctx.stroke();
+				
+				currOffsetY += drawData.pixelsPerGridCellSide;
+			}
+			
+			currOffsetY = 0;
+			currOffsetX += drawData.pixelsPerGridCellSide;
+		}
+	}
+	
+	function drawGridBorder(drawData)
+	{
+		drawData.ctx.fillStyle = borderColor;
+		drawData.ctx.rect(
+			drawData.gridZeroXCoord, drawData.gridZeroYCoord,
+			totalGridWidthInPixels, totalGridHeightInPixels);
+		drawData.ctx.stroke();
+	}
+	
+	function drawGameElements(drawData)
+	{
+		var ctx = drawData.ctx;
+		
+		for (row = 0; row < numGridRows; row++)
+		{
+			for (col = 0; col < numGridCols; col++)
+			{
+				var cellZeroX = drawData.gridZeroXCoord + col*drawData.pixelsPerGridCellSide;
+				var cellZeroY = drawData.gridZeroYCoord + row*drawData.pixelsPerGridCellSide;
+				var centerX = cellZeroX + 0.5*drawData.pixelsPerGridCellSide;
+			    var centerY = cellZeroY + 0.5*drawData.pixelsPerGridCellSide;
+				var radius = 0.5*drawData.pixelsPerGridCellSide;
+				
+				var elemID = gameGrid[row][col];	
+				switch(elemID)
+				{
+					case snakeBody:
+						// x, y, radius, startAngle, endAngle, anticlockwise
+						ctx.fillStyle = snakeBodyColor;
+						ctx.beginPath();
+						ctx.arc(centerX, centerY, radius, 0, Math.PI*2, true);
+						ctx.closePath();
+						ctx.fill();
+					break;
+					
+					case snakeHead:
+						// x, y, radius, startAngle, endAngle, anticlockwise
+						ctx.fillStyle = snakeHeadColor;
+						ctx.beginPath();
+						ctx.arc(centerX, centerY, radius, 0, Math.PI*2, true);
+						ctx.closePath();
+						ctx.fill();
+					break;
+					
+					case apple:
+					break;
+				}
+			}
+		}
+	}
+	
+    function draw()
+	{
+      var canvas = document.getElementById("canvas");
+      if (canvas.getContext)
+	  {
+		  var tStart = performance.now();
+		  
+		  var ctx = canvas.getContext("2d");
+		  ctx.canvas.width  = window.innerWidth;
+		  ctx.canvas.height = window.innerHeight;
+		  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+		  
+		  var canvasWidth = ctx.canvas.width;
+		  var canvasHeight = ctx.canvas.height;
+		  var totalGridPixels = totalGridWidthInPixels*totalGridHeightInPixels;
+		  var totalGridCells = numGridRows*numGridCols;	
+		  var pixelsPerGridCell  = totalGridPixels / totalGridCells;
+		  var pixelsPerGridCellSide = Math.sqrt(pixelsPerGridCell);
+		  
+		  var drawData = {
+			ctx:ctx,
+			canvasWidth:canvasWidth,
+			canvasHeight:canvasHeight,
+			pixelsPerGridCell:pixelsPerGridCell,
+			pixelsPerGridCellSide:pixelsPerGridCellSide,
+			gridZeroXCoord:0.0,
+			gridZeroYCoord:0.0
+		  };
+		   
+		  drawGridBorder(drawData);
+		  if (debug){
+			drawGrid(drawData);
+	      }
+		  drawGameElements(drawData);
+		  
+		  var tEnd = performance.now();
+          if (debug){
+			console.log("Frame time: " + (tEnd - tStart) + " milliseconds.");
+		  }
+		  
+	      setTimeout(draw, updateTimeMS);
+	  }
+    }
+	
+	function onMouseClick(event)
+	{	  
+		//var xPos = event.clientX;
+		//var yPos = event.clientY;
+	}
+	
+	function main()
+	{
+		document.addEventListener("click", onMouseClick);
+		initializeGame();
+		//var snd = document.getElementById('noise');
+		//snd.src = 'ttyd.mp3';
+		//snd.load();
+		//snd.play();
+		draw();
+	}
+  </script>
+  
+ <title>Sssssnake</title>
+ </head>
+ <body onload="main();">
+   <canvas id="canvas"></canvas>
+   <audio id="noise"></audio>
+ </body>
+</html>
