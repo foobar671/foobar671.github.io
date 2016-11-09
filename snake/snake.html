@@ -43,7 +43,7 @@
 	var score = 0;
 	var gameOver = false;
 	var updateTimeMS = 16;
-	var debug = true;
+	var debug = false;
 	
 	function initializeGameGrid()
 	{
@@ -325,11 +325,17 @@
 	  updateGameState();
 	  drawGame();
 	  var tEnd = performance.now();
+	  var frameTimeMS = tEnd - tStart;
 	  
 	  if (debug){
-		console.log("Frame time: " + (tEnd - tStart) + " milliseconds.");
+		console.log("Frame time: " + frameTimeMS + " milliseconds.");
 	  }
-	  setTimeout(mainGameLoop, updateTimeMS);
+	  if (updateTimeMS - frameTimeMS >= 0){
+		setTimeout(mainGameLoop, updateTimeMS - frameTimeMS);
+	  }
+	  else {
+		setTimeout(mainGameLoop, updateTimeMS);
+	  }
     }
 	
 	function onMouseClick(event)
