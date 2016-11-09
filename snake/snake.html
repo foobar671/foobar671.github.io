@@ -14,18 +14,20 @@
 	// Snake properties
 	var initialSnakeHeadPositionX = Math.floor(numGridCols/2);
     var initialSnakeHeadPositionY = Math.floor(numGridRows/2);
-	var initialSnakeBodySegments = 3;
 	var currSnakeHeadPosX = initialSnakeHeadPositionX;
 	var currSnakeHeadPosY = initialSnakeHeadPositionY;
-	var currSnakeBodySegments = initialSnakeBodySegments;
-	var snakeBodySegmentsXCoords = new Array();
-	var snakeBodySegmentsYCoords = new Array();
+	var numInitialSnakeBodySegments = 3;
+	var snakeBodySegments = new Array();
+	var snakeDirections = {up:0,down:1,left:2,right:3};
+	var initialSnakeDirection = snakeDirections.up;
+	var currSnakeDirection = initialSnakeDirection;
 	var snakeHeadColor = "#FF0000";
 	var snakeBodyColor = "#008000";
 	
 	// Apple properties
-	var appleXPositions = new Array();
-	var appleYPositions = new Array();
+	var applePointAward = 10;
+	var apples = new Array();
+	var appleColor = "#0000FF";
 	
 	// Game grid contents IDs
 	var empty = 0;
@@ -33,11 +35,15 @@
 	var snakeHead = 2;
 	var apple = 3;
 	
-	// Random variables that don't belong anywhere else
-	var debug = true;
+	// Game grid properties
 	var gridColor = "#000000";
 	var borderColor = "#000000";
+	
+	// Miscellaneous global game properties
+	var score = 0;
+	var gameOver = false;
 	var updateTimeMS = 16;
+	var debug = true;
 	
 	function initializeGameGrid()
 	{
@@ -55,17 +61,53 @@
 	{
 		// Should add some bounds checking
 		gameGrid[initialSnakeHeadPositionX][initialSnakeHeadPositionY] = snakeHead;
-		for (i = 0; i < initialSnakeBodySegments; i++)
+		for (i = 0; i < numInitialSnakeBodySegments; i++)
 		{
 			// [row][col]
-			gameGrid[initialSnakeHeadPositionY + i + 1][initialSnakeHeadPositionX] = snakeBody;
+			xCoord = initialSnakeHeadPositionX;
+			yCoord = initialSnakeHeadPositionY + i + 1;
+			gameGrid[yCoord][xCoord] = snakeBody;
+			var snakeBodySegment = {xCoord:xCoord, yCoord:yCoord};
+			snakeBodySegments.push(snakeBodySegment);
 		}
+	}
+	
+	function addApple()
+	{
+		// Right now very simple. Note Math.random() is [0,1)
+		var appleX = Math.floor(Math.random() * numGridCols);
+		var appleY = Math.floor(Math.random() * numGridRows);
+		var appleObj = {appleX:appleX, appleY:appleY};
+		apples.push(appleObj); // Add to explicit tracking array
+		gameGrid[appleY][appleX] = apple; // Add to game grid
+	}
+	
+	// This is terrible... But the apple array will be small.
+	function removeApple(appleX, appleY)
+	{
+		// Remove from explicit tracking array
+		for (i = 0; i < apples.length; i++)
+		{
+			currAppleObj = apples[i];
+			currAppleX = currAppleObj.appleX;
+			currAppleY = currAppleObj.appleY;
+			
+			if (currAppleX == appleX && currAppleY == appleY)
+			{
+				apples.splice(i,1);
+				break;
+			}
+		}
+		
+		// Remove from game grid
+		gameGrid[appleY][appleX] = empty;
 	}
 	
 	function initializeGame()
 	{
 		initializeGameGrid();
 		initializeSnake();
+		addApple();
 	}
 
 	function drawGrid(drawData)
@@ -116,8 +158,8 @@
 			    var centerY = cellZeroY + 0.5*drawData.pixelsPerGridCellSide;
 				var radius = 0.5*drawData.pixelsPerGridCellSide;
 				
-				var elemID = gameGrid[row][col];	
-				switch(elemID)
+				var entityID = gameGrid[row][col];	
+				switch(entityID)
 				{
 					case snakeBody:
 						// x, y, radius, startAngle, endAngle, anticlockwise
@@ -138,18 +180,118 @@
 					break;
 					
 					case apple:
+						// x, y, radius, startAngle, endAngle, anticlockwise
+						ctx.fillStyle = appleColor;
+						ctx.beginPath();
+						ctx.arc(centerX, centerY, radius, 0, Math.PI*2, true);
+						ctx.closePath();
+						ctx.fill();
 					break;
 				}
 			}
 		}
 	}
 	
+	function moveSnake()
+	{
+		var prevSegmentLocationX = currSnakeHeadPosX;
+		var prevSegmentLocationY = currSnakeHeadPosY;
+		
+		// Move the head
+		switch (currSnakeDirection)
+		{
+			case snakeDirections.up:
+				currSnakeHeadPosY -= 1;
+			break;
+			case snakeDirections.down:
+				currSnakeHeadPosY += 1;
+			break;
+			case snakeDirections.left:
+				currSnakeHeadPosX -= 1;
+			break;
+			case snakeDirections.right:
+				currSnakeHeadPosX += 1;
+			break;
+		}
+		
+		if (headIsOutOfBounds()) return;
+		
+		gameGrid[prevSegmentLocationY][prevSegmentLocationX] = empty;
+		gameGrid[currSnakeHeadPosY][currSnakeHeadPosX] = snakeHead;
+		
+		// Update the body
+		for (i = 0; i < snakeBodySegments.length; i++)
+		{
+			currSegmentLocationX = snakeBodySegments[i].xCoord;
+			currSegmentLocationY = snakeBodySegments[i].yCoord;
+			
+			gameGrid[currSegmentLocationY][currSegmentLocationX] = empty;
+			gameGrid[prevSegmentLocationY][prevSegmentLocationX] = snakeBody;
+			
+			var newSegmentLoc = {xCoord:prevSegmentLocationX, yCoord:prevSegmentLocationY};
+			snakeBodySegments[i] = newSegmentLoc;
+			
+			prevSegmentLocationX = currSegmentLocationX;
+			prevSegmentLocationY = currSegmentLocationY;
+		}
+	}
+	
+	function headIsOutOfBounds()
+	{
+		if (currSnakeHeadPosX < 0 ||
+		    currSnakeHeadPosY < 0 ||
+			currSnakeHeadPosX >= numGridCols ||
+			currSnakeHeadPosY >= numGridRows)
+		{
+			return true;
+		}
+		return false;
+	}
+	
+	function detectCollisionsAndUpdateScore()
+	{
+		// Must check OOB-induced game over first.
+		if (headIsOutOfBounds())
+		{
+			gameOver = true;
+			return;
+		}
+	
+		// [row][col]
+		var snakeHeadCellEntityID = gameGrid[currSnakeHeadPosY][currSnakeHeadPosX];
+		switch(snakeHeadCellEntityID)
+		{
+			case snakeBody:
+				gameOver = true;
+			break;
+			
+			case apple:
+				removeApple(currSnakeHeadPosX, currSnakeHeadPosY);
+				score += applePointAward;
+			break;
+		}
+	}
+	
+	function updateGameState()
+	{
+		moveSnake();
+		detectCollisionsAndUpdateScore();
+	}
+	
     function draw()
 	{
+	  if (gameOver)
+	  {
+		console.log("LOSER");
+		return;
+	  }
+	  
       var canvas = document.getElementById("canvas");
       if (canvas.getContext)
 	  {
 		  var tStart = performance.now();
+		  
+		  updateGameState();
 		  
 		  var ctx = canvas.getContext("2d");
 		  ctx.canvas.width  = window.innerWidth;
