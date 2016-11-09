@@ -22,7 +22,7 @@
 	var initialSnakeDirection = snakeDirections.up;
 	var currSnakeDirection = initialSnakeDirection;
 	var nextRequestedSnakeDirection = initialSnakeDirection;
-	var cellsToMoveSnakePerFrame = 0.1; // (0,1]
+	var cellsToMoveSnakePerFrame = 0.2; // (0,1]
 	var snakeHeadColor = "#FF0000"; // red
 	var snakeBodyColor = "#008000"; // green
 	
@@ -281,6 +281,7 @@
 			{
 				// Head - body collision! Stop right there!
 				gameOver = true;
+				gameOverMessage = "Unfortunately, you have become a victim of your own gluttony."
 			}
 			
 			prevSegmentLocationX = currSegmentLocationX;
