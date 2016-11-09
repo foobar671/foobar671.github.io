@@ -278,21 +278,11 @@
 		detectCollisionsAndUpdateScore();
 	}
 	
-    function draw()
+	function drawGame()
 	{
-	  if (gameOver)
-	  {
-		console.log("LOSER");
-		return;
-	  }
-	  
-      var canvas = document.getElementById("canvas");
-      if (canvas.getContext)
-	  {
-		  var tStart = performance.now();
-		  
-		  updateGameState();
-		  
+		var canvas = document.getElementById("canvas");
+		if (canvas.getContext)
+		{	 
 		  var ctx = canvas.getContext("2d");
 		  ctx.canvas.width  = window.innerWidth;
 		  ctx.canvas.height = window.innerHeight;
@@ -318,16 +308,28 @@
 		  drawGridBorder(drawData);
 		  if (debug){
 			drawGrid(drawData);
-	      }
-		  drawGameElements(drawData);
-		  
-		  var tEnd = performance.now();
-          if (debug){
-			console.log("Frame time: " + (tEnd - tStart) + " milliseconds.");
 		  }
-		  
-	      setTimeout(draw, updateTimeMS);
+		  drawGameElements(drawData);
+		}
+	}
+	
+    function mainGameLoop()
+	{
+	  if (gameOver)
+	  {
+		console.log("LOSER");
+		return;
 	  }
+			  
+      var tStart = performance.now();  
+	  updateGameState();
+	  drawGame();
+	  var tEnd = performance.now();
+	  
+	  if (debug){
+		console.log("Frame time: " + (tEnd - tStart) + " milliseconds.");
+	  }
+	  setTimeout(mainGameLoop, updateTimeMS);
     }
 	
 	function onMouseClick(event)
@@ -344,7 +346,7 @@
 		//snd.src = 'ttyd.mp3';
 		//snd.load();
 		//snd.play();
-		draw();
+		mainGameLoop();
 	}
   </script>
   
