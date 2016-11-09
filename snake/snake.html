@@ -5,7 +5,7 @@
   <script type="application/javascript">
   
 	// Game grid variables. Note that we map increasing Y to higher row number.
-	var numGridRows = 30;
+	var numGridRows = 30; // 30
 	var numGridCols = numGridRows;	
 	var gameGrid = new Array();
 	var totalGridWidthInPixels = 600.0;
@@ -16,7 +16,7 @@
     var initialSnakeHeadPositionY = Math.floor(numGridRows/2);
 	var currSnakeHeadPosX = initialSnakeHeadPositionX;
 	var currSnakeHeadPosY = initialSnakeHeadPositionY;
-	var numInitialSnakeBodySegments = 5;
+	var numInitialSnakeBodySegments = 3;
 	var snakeBodySegments = new Array();
 	var snakeDirections = {up:0,down:1,left:2,right:3};
 	var initialSnakeDirection = snakeDirections.up;
@@ -44,8 +44,17 @@
 	// Miscellaneous global game properties
 	var score = 0;
 	var gameOver = false;
+	var gameOverMessage = "Thank you so much for to playing my game!";
+	var hudTextColor = "#0000FF"; // blue
+	var initialHudTextPad = 35; // above the game board
+	var additionalHudElementsPad = 25; // above the score
+	var gameOverMessageColor = "#FF0000"; // red
+	var gameOverMessageTextPadPixels = 100; // from the bottom of the board
+	var gameOverAdditionalMessagesPad = 35; // down from main game over message
 	var updateTimeMS = 16.0; // ~60 FPS
 	var snakeMovementAccumulator = 0.0;
+	var timeOfGameStart = Date.now();
+	var timeSurvivedMS = 0.0;
 	var debug = false;
 	
 	function initializeGameGrid()
@@ -63,6 +72,12 @@
 	function initializeSnake()
 	{
 		// Should add some bounds checking
+		currSnakeHeadPosX = initialSnakeHeadPositionX;
+		currSnakeHeadPosY = initialSnakeHeadPositionY;
+		currSnakeDirection = initialSnakeDirection;
+	    nextRequestedSnakeDirection = initialSnakeDirection;
+		snakeBodySegments = new Array();
+	
 		gameGrid[initialSnakeHeadPositionX][initialSnakeHeadPositionY] = snakeHead;
 		for (i = 0; i < numInitialSnakeBodySegments; i++)
 		{
@@ -77,9 +92,17 @@
 	
 	function addApple()
 	{
-		// Right now very simple. Note Math.random() is [0,1)
+		// Note Math.random() is [0,1)
 		var appleX = Math.floor(Math.random() * numGridCols);
 		var appleY = Math.floor(Math.random() * numGridRows);
+		
+		// REALLY need to fix this :/
+		while (gameGrid[appleY][appleX] != empty)
+		{
+			appleX = Math.floor(Math.random() * numGridCols);
+			appleY = Math.floor(Math.random() * numGridRows);
+		}
+		
 		var appleObj = {appleX:appleX, appleY:appleY};
 		apples.push(appleObj); // Add to explicit tracking array
 		gameGrid[appleY][appleX] = apple; // Add to game grid
@@ -101,16 +124,20 @@
 				break;
 			}
 		}
-		
-		// Remove from game grid
-		gameGrid[appleY][appleX] = empty;
 	}
 	
 	function initializeGame()
 	{
 		initializeGameGrid();
 		initializeSnake();
+		
+		apples = new Array();
 		addApple();
+		
+		timeOfGameStart = Date.now();
+		timeSurvivedMS = 0.0;
+		score = 0;
+		gameOver = false;
 	}
 
 	function drawGrid(drawData)
@@ -224,15 +251,26 @@
 		
 		if (headIsOutOfBounds()) return;
 		
+		ateApple = false;
+		if (gameGrid[currSnakeHeadPosY][currSnakeHeadPosX] == apple) ateApple = true;
 		gameGrid[prevSegmentLocationY][prevSegmentLocationX] = empty;
 		
-		// Update the body
+		// Update the body. Additional segment awarded for eating an apple!
+		var additionalSegment = {xCoord:0, yCoord:0};
 		for (i = 0; i < snakeBodySegments.length; i++)
 		{	
 			currSegmentLocationX = snakeBodySegments[i].xCoord;
 			currSegmentLocationY = snakeBodySegments[i].yCoord;
 			
-			gameGrid[currSegmentLocationY][currSegmentLocationX] = empty;
+			if (ateApple && i == (snakeBodySegments.length - 1) )
+			{
+				additionalSegment.xCoord = currSegmentLocationX;
+				additionalSegment.yCoord = currSegmentLocationY;
+			}
+			else {
+				gameGrid[currSegmentLocationY][currSegmentLocationX] = empty;
+			}
+
 			gameGrid[prevSegmentLocationY][prevSegmentLocationX] = snakeBody;
 			
 			var newSegmentLoc = {xCoord:prevSegmentLocationX, yCoord:prevSegmentLocationY};
@@ -250,6 +288,14 @@
 		}
 		
 		gameGrid[currSnakeHeadPosY][currSnakeHeadPosX] = snakeHead;
+		
+		if (ateApple)
+		{
+			snakeBodySegments.push(additionalSegment);
+			removeApple(currSnakeHeadPosX, currSnakeHeadPosY);
+			score += applePointAward;
+			addApple();
+		}
 	}
 	
 	function headIsOutOfBounds()
@@ -264,34 +310,47 @@
 		return false;
 	}
 	
-	function detectCollisionsAndUpdateScore()
-	{
-		// Must check OOB-induced game over first.
-		if (headIsOutOfBounds())
-		{
-			gameOver = true;
-			return;
-		}
-	
-		// [row][col]
-		var snakeHeadCellEntityID = gameGrid[currSnakeHeadPosY][currSnakeHeadPosX];
-		switch(snakeHeadCellEntityID)
-		{
-			case snakeBody:
-				gameOver = true;
-			break;
-			
-			case apple:
-				removeApple(currSnakeHeadPosX, currSnakeHeadPosY);
-				score += applePointAward;
-			break;
-		}
-	}
-	
 	function updateGameState()
 	{
 		moveSnake();
-		detectCollisionsAndUpdateScore();
+		
+		if (headIsOutOfBounds())
+		{
+			gameOver = true;
+			gameOverMessage = "A wall has defeated you in mortal no-hand to " +
+				              "no-hand combat :(";
+			return;
+		}
+	}
+	
+	function drawGameOver(drawData)
+	{
+		drawData.ctx.fillStyle = gameOverMessageColor;
+		drawData.ctx.font = "30px Arial";
+		drawData.ctx.textAlign = "center";
+		var gameOverTextPosY = drawData.gridZeroYCoord +
+			totalGridHeightInPixels + gameOverMessageTextPadPixels;
+		drawData.ctx.fillText(
+			gameOverMessage, drawData.canvasWidth * 0.5, gameOverTextPosY);
+		gameOverTextPosY += gameOverAdditionalMessagesPad;
+		drawData.ctx.fillText("Press 'r' to restart.",
+			drawData.canvasWidth * 0.5, gameOverTextPosY);
+	}
+	
+	function drawHud(drawData)
+	{
+		if (!gameOver) {
+			timeSurvivedMS = (Date.now() - timeOfGameStart);
+		}
+		drawData.ctx.fillStyle = hudTextColor;
+		drawData.ctx.font = "30px Arial";
+		drawData.ctx.textAlign = "center";
+		var hudTextPosY = drawData.gridZeroYCoord - initialHudTextPad;
+		drawData.ctx.fillText("Seconds survived: " + timeSurvivedMS / 1000.0,
+			drawData.canvasWidth * 0.5, hudTextPosY);
+		hudTextPosY -= additionalHudElementsPad;
+		drawData.ctx.fillText("Score: " + score,
+			drawData.canvasWidth * 0.5, hudTextPosY);
 	}
 	
 	function drawGame()
@@ -326,10 +385,14 @@
 		  };
 		   
 		  drawGridBorder(drawData);
-		  if (debug){
+		  if (debug) {
 			drawGrid(drawData);
 		  }
 		  drawGameElements(drawData);
+		  drawHud(drawData);
+		  if (gameOver) {
+			drawGameOver(drawData);
+		  }
 		}
 	}
 	
@@ -345,7 +408,6 @@
 		console.log("Frame time: " + frameTimeMS + " milliseconds.");
 	  }
 	  if (updateTimeMS - frameTimeMS > 0.0){
-		console.log("Setting timeout to " + (updateTimeMS-frameTimeMS) + "MS");
 		setTimeout(mainGameLoop, updateTimeMS - frameTimeMS);
 	  }
 	  else {
@@ -382,6 +444,11 @@
 				// down arrow
 				if (currSnakeDirection == snakeDirections.up) return;
 				nextRequestedSnakeDirection = snakeDirections.down;
+			break;
+			
+			case 82:
+				// r
+				initializeGame();
 			break;
 		}
 	}
