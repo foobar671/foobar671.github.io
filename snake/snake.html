@@ -47,7 +47,7 @@
 	var gameOverMessage = "Thank you so much for to playing my game!";
 	var hudTextColor = "#0000FF"; // blue
 	var initialHudTextPad = 35; // above the game board
-	var additionalHudElementsPad = 25; // above the score
+	var additionalHudElementsPad = 35; // above the score
 	var gameOverMessageColor = "#FF0000"; // red
 	var gameOverMessageTextPadPixels = 100; // from the bottom of the board
 	var gameOverAdditionalMessagesPad = 35; // down from main game over message
@@ -345,11 +345,17 @@
 		}
 		drawData.ctx.fillStyle = hudTextColor;
 		drawData.ctx.font = "30px Arial";
-		drawData.ctx.textAlign = "center";
+		drawData.ctx.textAlign = "start";
+		
+		var secondsText = "Seconds survived: ";
+		var secondsTextWidth =
+			drawData.ctx.measureText(secondsText + "x.xxx").width;
 		var hudTextPosY = drawData.gridZeroYCoord - initialHudTextPad;
-		drawData.ctx.fillText("Seconds survived: " + timeSurvivedMS / 1000.0,
-			drawData.canvasWidth * 0.5, hudTextPosY);
+
+		drawData.ctx.fillText(secondsText + timeSurvivedMS / 1000.0,
+			drawData.canvasWidth * 0.5 -(secondsTextWidth * 0.5), hudTextPosY);
 		hudTextPosY -= additionalHudElementsPad;
+		drawData.ctx.textAlign = "center";
 		drawData.ctx.fillText("Score: " + score,
 			drawData.canvasWidth * 0.5, hudTextPosY);
 	}
