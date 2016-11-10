@@ -8,6 +8,9 @@
 	var numGridRows = 30; // 30
 	var numGridCols = numGridRows;	
 	var gameGrid = new Array();
+	var autoScaleGrid = true; // Scales grid to 100*scaleFactor % of the screen
+	var scaleFactor = 0.5;
+	var forceSquareAutoScaledGrid = true; // Scale to square grid even if screen width != screen height
 	var totalGridWidthInPixels = 600.0;
 	var totalGridHeightInPixels = 600.0;
 	
@@ -381,6 +384,17 @@
 		  ctx.canvas.height = window.innerHeight;
 		  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 		  
+		  if (autoScaleGrid)
+		  {
+			totalGridHeightInPixels = scaleFactor * ctx.canvas.height;
+			if (forceSquareAutoScaledGrid ) {
+				totalGridWidthInPixels = totalGridHeightInPixels;
+			}
+			else {
+				totalGridHeightInPixels = scaleFactor * ctx.canvas.height;
+			}
+		  }
+				
 		  var canvasWidth = ctx.canvas.width;
 		  var canvasHeight = ctx.canvas.height;
 		  var totalGridPixels = totalGridWidthInPixels*totalGridHeightInPixels;
@@ -388,7 +402,7 @@
 		  var pixelsPerGridCell  = totalGridPixels / totalGridCells;
 		  var pixelsPerGridCellSide = Math.sqrt(pixelsPerGridCell);
 		  
-		  // Compute X and Y offsets to draw the game grid centered on canvas.
+		  // Compute X and Y offsets to draw the game grid centred on canvas.
 		  var gridZeroXCoord = ctx.canvas.width * 0.5 - ( 0.5 * totalGridWidthInPixels);
 		  var gridZeroYCoord = ctx.canvas.height * 0.5 - ( 0.5 * totalGridHeightInPixels);
 		  
@@ -440,26 +454,30 @@
 		switch (keyCode)
 		{
 			case 37:
-				// left arrow
+			case 65:
+				// left arrow or a
 				if (currSnakeDirection == snakeDirections.right) return;
 				nextRequestedSnakeDirection = snakeDirections.left;
 			break;
 			
 			case 38:
-				// up arrow
+			case 87:
+				// up arrow or w
 				if (currSnakeDirection == snakeDirections.down) return;
 				nextRequestedSnakeDirection = snakeDirections.up;
 			break;
 			
 			case 39:
-				// right arrow
+			case 68:
+				// right arrow or d
 				if (currSnakeDirection == snakeDirections.left) return;
 				nextRequestedSnakeDirection = snakeDirections.right;
 
 			break;
 			
 			case 40:
-				// down arrow
+			case 83:
+				// down arrow or s
 				if (currSnakeDirection == snakeDirections.up) return;
 				nextRequestedSnakeDirection = snakeDirections.down;
 			break;
