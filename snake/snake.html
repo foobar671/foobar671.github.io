@@ -330,7 +330,7 @@
 		drawData.ctx.font = "30px Arial";
 		drawData.ctx.textAlign = "center";
 		var gameOverTextPosY = drawData.gridZeroYCoord +
-			totalGridHeightInPixels + gameOverMessageTextPadPixels;
+			totalGridHeightInPixels + gameOverMessageTextPadPixels + 18;
 		drawData.ctx.fillText(
 			gameOverMessage, drawData.canvasWidth * 0.5, gameOverTextPosY);
 		gameOverTextPosY += gameOverAdditionalMessagesPad;
