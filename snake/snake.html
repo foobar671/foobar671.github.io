@@ -348,12 +348,23 @@
 		drawData.ctx.textAlign = "start";
 		
 		var secondsText = "Seconds survived: ";
+		var scorePerMinText = "Score per minute: ";
 		var secondsTextWidth =
 			drawData.ctx.measureText(secondsText + "x.xxx").width;
+		var scorePerMinTextWidth =
+			drawData.ctx.measureText(scorePerMinText + "xxx").width;
+		var scorePerMinute = Math.floor( score / (timeSurvivedMS / 1000.0 / 60.0) );
 		var hudTextPosY = drawData.gridZeroYCoord - initialHudTextPad;
 
 		drawData.ctx.fillText(secondsText + timeSurvivedMS / 1000.0,
-			drawData.canvasWidth * 0.5 -(secondsTextWidth * 0.5), hudTextPosY);
+			drawData.canvasWidth * 0.5 - (secondsTextWidth * 0.5),
+			hudTextPosY);
+			
+		hudTextPosY -= additionalHudElementsPad;
+		drawData.ctx.fillText(scorePerMinText + scorePerMinute,
+			drawData.canvasWidth * 0.5 - (scorePerMinTextWidth * 0.5),
+			hudTextPosY);
+			
 		hudTextPosY -= additionalHudElementsPad;
 		drawData.ctx.textAlign = "center";
 		drawData.ctx.fillText("Score: " + score,
