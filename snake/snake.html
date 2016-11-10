@@ -9,7 +9,7 @@
 	var numGridCols = numGridRows;	
 	var gameGrid = new Array();
 	var autoScaleGrid = true; // Scales grid to 100*scaleFactor % of the screen
-	var scaleFactor = 0.5;
+	var scaleFactor = 0.55;
 	var forceSquareAutoScaledGrid = true; // Scale to square grid even if screen width != screen height
 	var totalGridWidthInPixels = 600.0;
 	var totalGridHeightInPixels = 600.0;
@@ -25,7 +25,6 @@
 	var initialSnakeDirection = snakeDirections.up;
 	var currSnakeDirection = initialSnakeDirection;
 	var nextRequestedSnakeDirection = initialSnakeDirection;
-	var cellsToMoveSnakePerFrame = 0.2; // (0,1]
 	var snakeHeadColor = "#FF0000"; // red
 	var snakeBodyColor = "#008000"; // green
 	
@@ -49,12 +48,15 @@
 	var gameOver = false;
 	var gameOverMessage = "Thank you so much for to playing my game!";
 	var hudTextColor = "#0000FF"; // blue
+	var hudTextSize = 25;
 	var initialHudTextPad = 35; // above the game board
 	var additionalHudElementsPad = 35; // above the score
 	var gameOverMessageColor = "#FF0000"; // red
+	var gameOverMessageSize = 25;
 	var gameOverMessageTextPadPixels = 35; // from the bottom of the board
 	var gameOverAdditionalMessagesPad = 35; // down from main game over message
-	var updateTimeMS = 16.0; // ~60 FPS
+	var updateTimeMS = 16.0; // 16.0 // ~60 FPS
+	var cellsToMoveSnakePerFrame = 0.2; // 0.2 // (0,1]
 	var snakeMovementAccumulator = 0.0;
 	var timeOfGameStart = Date.now();
 	var timeSurvivedMS = 0.0;
@@ -330,14 +332,14 @@
 	function drawGameOver(drawData)
 	{
 		drawData.ctx.fillStyle = gameOverMessageColor;
-		drawData.ctx.font = "30px Arial";
+		drawData.ctx.font = gameOverMessageSize + "px Arial";
 		drawData.ctx.textAlign = "center";
 		var gameOverTextPosY = drawData.gridZeroYCoord +
 			totalGridHeightInPixels + gameOverMessageTextPadPixels + 18;
 		drawData.ctx.fillText(
 			gameOverMessage, drawData.canvasWidth * 0.5, gameOverTextPosY);
 		gameOverTextPosY += gameOverAdditionalMessagesPad;
-		drawData.ctx.fillText("Press 'r' to restart.",
+		drawData.ctx.fillText("[ r ] to restart.",
 			drawData.canvasWidth * 0.5, gameOverTextPosY);
 	}
 	
@@ -347,7 +349,7 @@
 			timeSurvivedMS = (Date.now() - timeOfGameStart);
 		}
 		drawData.ctx.fillStyle = hudTextColor;
-		drawData.ctx.font = "30px Arial";
+		drawData.ctx.font = hudTextSize + "px Arial";
 		drawData.ctx.textAlign = "start";
 		
 		var secondsText = "Seconds survived: ";
