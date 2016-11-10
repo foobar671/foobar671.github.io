@@ -2,14 +2,26 @@
 <html>
  <head>
   <meta charset="utf-8"/>
-  <script type="application/javascript">
+  <style>
+	body, html {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+	}
+	canvas {
+		position:absolute;
+	}
+  </style>
   
+  <script type="application/javascript">
 	// Game grid variables. Note that we map increasing Y to higher row number.
 	var numGridRows = 30; // 30
 	var numGridCols = numGridRows;	
 	var gameGrid = new Array();
 	var autoScaleGrid = true; // Scales grid to 100*scaleFactor % of the screen
-	var scaleFactor = 0.55;
+	var scaleFactor = 0.60;
 	var forceSquareAutoScaledGrid = true; // Scale to square grid even if screen width != screen height
 	var totalGridWidthInPixels = 600.0;
 	var totalGridHeightInPixels = 600.0;
@@ -178,6 +190,33 @@
 			totalGridWidthInPixels, totalGridHeightInPixels);
 		drawData.ctx.stroke();
 	}
+	
+	/*function drawSnakeEyes(drawData)
+	{
+	// get head center relative to canvas
+	// compute x coord by percentage displacement from center (mirror displacement depending on orientation)
+	// compute y coord by percentage displacement from center (mirror displacement depending on orientation)
+	// compute size by percentage of pixels per cell
+		var ctx = drawData.ctx;
+		var headCenterX = 
+		
+		switch (currSnakeDirection)
+		{
+			case snakeDirections.up:
+				currSnakeHeadPosY -= 1;
+			break;
+			case snakeDirections.down:
+				currSnakeHeadPosY += 1;
+			break;
+			case snakeDirections.left:
+				currSnakeHeadPosX -= 1;
+			break;
+			case snakeDirections.right:
+				currSnakeHeadPosX += 1;
+			break;
+		}
+	}
+	*/
 	
 	function drawGameElements(drawData)
 	{
@@ -436,6 +475,7 @@
 	  if (!gameOver) updateGameState();
 	  drawGame();
 	  var tEnd = performance.now();
+	  
 	  var frameTimeMS = tEnd - tStart;
 	  
 	  if (debug){
