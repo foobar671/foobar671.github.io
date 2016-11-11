@@ -16,46 +16,58 @@
   </style>
   
   <script type="application/javascript">
-	// Game grid variables. Note that we map increasing Y to higher row number.
-	var numGridRows = 30; // 30
+	/********** Game grid variables **********/
+	// Note that we map increasing Y to higher row number.
+	var numGridRows = 61; // 61
 	var numGridCols = numGridRows;	
 	var gameGrid = new Array();
-	var autoScaleGrid = true; // Scales grid to 100*scaleFactor % of the screen
+	// Scales grid to 100*scaleFactor % of the screen
+	var autoScaleGrid = true;
 	var scaleFactor = 0.60;
-	var forceSquareAutoScaledGrid = true; // Scale to square grid even if screen width != screen height
+	// Scale to square grid even if screen width != screen height
+	var forceSquareAutoScaledGrid = true;
 	var totalGridWidthInPixels = 600.0;
 	var totalGridHeightInPixels = 600.0;
 	
-	// Snake properties
-	var initialSnakeHeadPositionX = Math.floor(numGridCols/2);
-    var initialSnakeHeadPositionY = Math.floor(numGridRows/2);
+	/********** Snake properties **********/
+	var initialSnakeHeadPositionX = Math.ceil(numGridCols/2);
+    var initialSnakeHeadPositionY = Math.ceil(numGridRows/2);
 	var currSnakeHeadPosX = initialSnakeHeadPositionX;
 	var currSnakeHeadPosY = initialSnakeHeadPositionY;
-	var numInitialSnakeBodySegments = 3;
 	var snakeBodySegments = new Array();
 	var snakeDirections = {up:0,down:1,left:2,right:3};
 	var initialSnakeDirection = snakeDirections.up;
 	var currSnakeDirection = initialSnakeDirection;
 	var nextRequestedSnakeDirection = initialSnakeDirection;
+	var cellsToMoveSnakePerFrame = 0.40; // 0.40 // (0,1]
+	var segmentsGainedPerApple = 4; // 4
+	var numInitialSnakeBodySegments = segmentsGainedPerApple - 1;
+	// Portion of cell used for eye pixels	
+	var snakeEyeSizeRelativeToCell = 0.1;
+	// Horizontal distance between eyes as portion of cell side length
+	var snakeEyeDisplacementX = 0.3;
+	// Vertical displacement from cell centre line
+	var snakeEyeDisplacementY = 0.55;
 	var snakeHeadColor = "#FF0000"; // red
+	var snakeEyeColor = "#000000"; // black
 	var snakeBodyColor = "#008000"; // green
 	
-	// Apple properties
+	/********** Apple properties **********/
 	var applePointAward = 10;
 	var apples = new Array();
 	var appleColor = "#0000FF"; // blue
 	
-	// Game grid contents IDs
+	/********** Game grid contents IDs **********/
 	var empty = 0;
 	var snakeBody = 1;
 	var snakeHead = 2;
 	var apple = 3;
 	
-	// Game grid properties
+	/********** Game grid properties **********/
 	var gridColor = "#000000"; // black
 	var borderColor = "#000000"; // black
 	
-	// Miscellaneous global game properties
+	/********** Miscellaneous global game properties **********/
 	var score = 0;
 	var gameOver = false;
 	var gameOverMessage = "Thank you so much for to playing my game!";
@@ -65,11 +77,18 @@
 	var additionalHudElementsPad = 35; // above the score
 	var gameOverMessageColor = "#FF0000"; // red
 	var gameOverMessageSize = 25;
-	var gameOverMessageTextPadPixels = 35; // from the bottom of the board
-	var gameOverAdditionalMessagesPad = 35; // down from main game over message
+	// from the bottom of the board
+	var gameOverMessageTextPadPixels = 35;
+	// down from main game over message
+	var gameOverAdditionalMessagesPad = 35;
 	var updateTimeMS = 16.0; // 16.0 // ~60 FPS
-	var cellsToMoveSnakePerFrame = 0.2; // 0.2 // (0,1]
+	var gameLogicUpdateTimeMS = 32; // 32 // Must be >= updateTimeMS
+	var gameLogicUpdateMSAccumulator = 0;
 	var snakeMovementAccumulator = 0.0;
+	// We can only add 1 segment per frame, but apples may award multiple
+	// segments, so we'll queue these segments to be added on subsequent
+	// frames.
+	var queuedAdditionalSegments = 0;
 	var timeOfGameStart = Date.now();
 	var timeSurvivedMS = 0.0;
 	var debug = false;
@@ -154,6 +173,7 @@
 		timeOfGameStart = Date.now();
 		timeSurvivedMS = 0.0;
 		score = 0;
+		queuedAdditionalSegments = 0
 		gameOver = false;
 	}
 
@@ -191,32 +211,60 @@
 		drawData.ctx.stroke();
 	}
 	
-	/*function drawSnakeEyes(drawData)
-	{
-	// get head center relative to canvas
-	// compute x coord by percentage displacement from center (mirror displacement depending on orientation)
-	// compute y coord by percentage displacement from center (mirror displacement depending on orientation)
-	// compute size by percentage of pixels per cell
+	function drawSnakeEyes(drawData)
+	{	  
 		var ctx = drawData.ctx;
-		var headCenterX = 
+		var headCellBeginPixelX =
+			drawData.gridZeroXCoord +
+			drawData.pixelsPerGridCellSide * currSnakeHeadPosX;
+		var headCellBeginPixelY =
+			drawData.gridZeroYCoord +
+			drawData.pixelsPerGridCellSide * currSnakeHeadPosY;
+		var headCenterX =
+			headCellBeginPixelX + 0.5 * drawData.pixelsPerGridCellSide + 0.5;
+		var headCenterY =
+			headCellBeginPixelY + 0.5 * drawData.pixelsPerGridCellSide;
 		
+		var totalEyePixels = drawData.pixelsPerGridCell * snakeEyeSizeRelativeToCell;
+		var pixelsPerEye = totalEyePixels / 2.0;
+		var eyeRadius = Math.sqrt(pixelsPerEye / Math.PI);
+		var eyeOffsetFromCenterX = 0.5 * (snakeEyeDisplacementX * drawData.pixelsPerGridCellSide);
+		var eyeOffsetFromCenterY = snakeEyeDisplacementY * (drawData.pixelsPerGridCellSide * 0.5);
+		
+		// Determine rotation with which to draw the eyes. We draw assuming
+		// the snake is facing up, rotating to accommodate the actual
+		// direction if necessary.
+		ctx.save();
+		ctx.translate(headCenterX, headCenterY);
 		switch (currSnakeDirection)
 		{
-			case snakeDirections.up:
-				currSnakeHeadPosY -= 1;
-			break;
 			case snakeDirections.down:
-				currSnakeHeadPosY += 1;
+				ctx.rotate(180 * Math.PI / 180);
 			break;
 			case snakeDirections.left:
-				currSnakeHeadPosX -= 1;
+				ctx.rotate(-90 * Math.PI / 180);
 			break;
 			case snakeDirections.right:
-				currSnakeHeadPosX += 1;
+				ctx.rotate(90 * Math.PI / 180);
 			break;
 		}
+		
+		// Move the origin to the centre of our snake head for accurate
+		// rotation.
+		ctx.fillStyle = snakeEyeColor;
+		// "left" eye
+		ctx.beginPath();
+		ctx.arc(-eyeOffsetFromCenterX, -eyeOffsetFromCenterY, eyeRadius, 0, Math.PI*2, true);
+		ctx.closePath();
+		ctx.fill();
+		// "right eye
+		ctx.beginPath();
+		ctx.arc(eyeOffsetFromCenterX, -eyeOffsetFromCenterY, eyeRadius, 0, Math.PI*2, true);
+		ctx.closePath();
+		ctx.fill();
+		// Undo any rotation
+		ctx.restore();
 	}
-	*/
 	
 	function drawGameElements(drawData)
 	{
@@ -251,6 +299,7 @@
 						ctx.arc(centerX, centerY, radius, 0, Math.PI*2, true);
 						ctx.closePath();
 						ctx.fill();
+						drawSnakeEyes(drawData);
 					break;
 					
 					case apple:
@@ -276,37 +325,55 @@
 		var prevSegmentLocationX = currSnakeHeadPosX;
 		var prevSegmentLocationY = currSnakeHeadPosY;
 		
-		// Move the head
+		// Calculate what the new head position would be
+		var newHeadPosX = currSnakeHeadPosX;
+		var newHeadPosY = currSnakeHeadPosY;
 		switch (currSnakeDirection)
 		{
 			case snakeDirections.up:
-				currSnakeHeadPosY -= 1;
+				newHeadPosY -= 1;
 			break;
 			case snakeDirections.down:
-				currSnakeHeadPosY += 1;
+				newHeadPosY += 1;
 			break;
 			case snakeDirections.left:
-				currSnakeHeadPosX -= 1;
+				newHeadPosX -= 1;
 			break;
 			case snakeDirections.right:
-				currSnakeHeadPosX += 1;
+				newHeadPosX += 1;
 			break;
 		}
 		
-		if (headIsOutOfBounds()) return;
+		if (pointIsOutOfBounds(newHeadPosX, newHeadPosY))
+		{
+			gameOver = true;
+			gameOverMessage = "A wall has defeated you in mortal no-hand to " +
+				              "no-hand combat :(";
+			return;
+		}
 		
+		// Actually update the head position.
+		currSnakeHeadPosX = newHeadPosX;
+		currSnakeHeadPosY = newHeadPosY;
+			
 		ateApple = false;
-		if (gameGrid[currSnakeHeadPosY][currSnakeHeadPosX] == apple) ateApple = true;
-		gameGrid[prevSegmentLocationY][prevSegmentLocationX] = empty;
+		if (gameGrid[currSnakeHeadPosY][currSnakeHeadPosX] == apple)
+		{
+			ateApple = true;
+			queuedAdditionalSegments += segmentsGainedPerApple;
+		}
 		
-		// Update the body. Additional segment awarded for eating an apple!
+		// Update the body. Additional segments awarded if
+		// queuedAdditionalSegments >= 1 at a rate of one per frame.
 		var additionalSegment = {xCoord:0, yCoord:0};
+		gameGrid[prevSegmentLocationY][prevSegmentLocationX] = empty;
 		for (i = 0; i < snakeBodySegments.length; i++)
 		{	
 			currSegmentLocationX = snakeBodySegments[i].xCoord;
 			currSegmentLocationY = snakeBodySegments[i].yCoord;
 			
-			if (ateApple && i == (snakeBodySegments.length - 1) )
+			if ( (queuedAdditionalSegments >= 1) &&
+					i == (snakeBodySegments.length - 1) )
 			{
 				additionalSegment.xCoord = currSegmentLocationX;
 				additionalSegment.yCoord = currSegmentLocationY;
@@ -336,20 +403,22 @@
 		
 		if (ateApple)
 		{
-			snakeBodySegments.push(additionalSegment);
 			removeApple(currSnakeHeadPosX, currSnakeHeadPosY);
 			score += applePointAward;
 			addApple();
 		}
+		
+		if (queuedAdditionalSegments >= 1)
+		{
+			queuedAdditionalSegments--;
+			snakeBodySegments.push(additionalSegment);
+		}
 	}
 	
-	function headIsOutOfBounds()
+	function pointIsOutOfBounds(x, y)
 	{
-		if (currSnakeHeadPosX < 0 ||
-		    currSnakeHeadPosY < 0 ||
-			currSnakeHeadPosX >= numGridCols ||
-			currSnakeHeadPosY >= numGridRows)
-		{
+		if (x < 0 || y < 0 ||
+			x >= numGridCols || y >= numGridRows) {
 			return true;
 		}
 		return false;
@@ -358,14 +427,6 @@
 	function updateGameState()
 	{
 		moveSnake();
-		
-		if (headIsOutOfBounds())
-		{
-			gameOver = true;
-			gameOverMessage = "A wall has defeated you in mortal no-hand to " +
-				              "no-hand combat :(";
-			return;
-		}
 	}
 	
 	function drawGameOver(drawData)
@@ -393,13 +454,26 @@
 		
 		var secondsText = "Seconds survived: ";
 		var scorePerMinText = "Score per minute: ";
+		var numSegmentsText = "Total snake segments: ";
 		var secondsTextWidth =
 			drawData.ctx.measureText(secondsText + "x.xxx").width;
 		var scorePerMinTextWidth =
 			drawData.ctx.measureText(scorePerMinText + "xxx").width;
-		var scorePerMinute = Math.floor( score / (timeSurvivedMS / 1000.0 / 60.0) );
+		var numSegmentsTextWidth =
+			drawData.ctx.measureText(numSegmentsText + "xxx").width;
+		var scorePerMinute =
+			Math.floor( score / (timeSurvivedMS / 1000.0 / 60.0) );
+		var totalNumSegments =
+			1 + numInitialSnakeBodySegments +
+			( segmentsGainedPerApple * (score / applePointAward) );
 		var hudTextPosY = drawData.gridZeroYCoord - initialHudTextPad;
 
+		// total segments
+		drawData.ctx.fillText(numSegmentsText + totalNumSegments,
+			drawData.canvasWidth * 0.5 - (numSegmentsTextWidth * 0.5),
+			hudTextPosY);
+		
+		hudTextPosY -= additionalHudElementsPad;
 		drawData.ctx.fillText(secondsText + timeSurvivedMS / 1000.0,
 			drawData.canvasWidth * 0.5 - (secondsTextWidth * 0.5),
 			hudTextPosY);
